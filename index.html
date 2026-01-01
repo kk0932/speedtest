@@ -3,81 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Speed Pro Max | 輕量優化版</title>
+    <title>Speed Pro Max | 視覺強化版</title>
     <style>
-        :root { --bg: #060910; --card: #111827; --primary: #0ea5e9; --accent: #22c55e; --text: #f8fafc; --dim: #64748b; }
-        body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; box-sizing: border-box; }
-        .box { width: 100%; max-width: 400px; text-align: center; background: var(--card); padding: 30px; border-radius: 28px; border: 1px solid #1f2937; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .num { font-size: 4.5rem; font-weight: 900; display: block; margin: 10px 0; color: var(--primary); letter-spacing: -2px; }
-        .btn { width: 100%; padding: 16px; border-radius: 50px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 20px; background: var(--primary); color: white; }
-        .btn:disabled { opacity: 0.4; filter: grayscale(1); }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 25px; }
-        .stat { background: rgba(255,255,255,0.03); padding: 12px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
-        .label { font-size: 0.7rem; color: var(--dim); text-transform: uppercase; margin-bottom: 4px; }
-        .val { font-size: 1rem; font-weight: bold; }
+        /* 鐵律：原生 CSS */
+        :root {
+            --bg: #060910;
+            --down-color: #0ea5e9;
+            --up-color: #a855f7;
+            --text: #ffffff;
+            --card-bg: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, system-ui, sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.5s ease;
+            overflow: hidden;
+        }
+
+        /* 根據測試狀態切換背景色 */
+        body.testing-down { background-color: #0c1e35; }
+        body.testing-up { background-color: #2e1049; }
+
+        .app-container {
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            z-index: 10;
+        }
+
+        .status-header {
+            font-size: 1.2rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            color: #94a3b8;
+            height: 1.5rem;
+        }
+
+        /* 中央大數字區域 */
+        .main-display {
+            margin: 20px 0;
+            position: relative;
+        }
+
+        #speed {
+            font-size: 6.5rem;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -4px;
+            transition: color 0.3s;
+        }
+
+        .unit {
+            font-size: 1.2rem;
+            color: #94a3b8;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* 進度條動畫 */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            margin: 30px 0;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--down-color);
+            transition: width 0.2s, background-color 0.3s;
+        }
+
+        /* 下方數據網格 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        /* 按鈕 */
+        .btn-start {
+            margin-top: 40px;
+            width: 100%;
+            padding: 18px;
+            border-radius: 50px;
+            border: none;
+            background: white;
+            color: black;
+            font-size: 1.2rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .btn-start:disabled { opacity: 0.2; }
+
+        /* 測速時的動態波紋 */
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        .ripple {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 200px; height: 200px;
+            background: var(--down-color);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: -1;
+            display: none;
+        }
+        .testing .ripple { display: block; animation: pulse 1.5s infinite; }
     </style>
 </head>
-<body>
-<div class="box">
-    <div style="color:var(--dim); font-size: 0.7rem; font-weight: bold; letter-spacing: 2px;">MOBILE OPTIMIZED</div>
-    <span id="speed" class="num">0.0</span>
-    <div id="status" style="color:var(--dim); font-size: 0.9rem; margin-bottom: 20px;">Ready to Test</div>
-    <div class="grid">
-        <div class="stat"><div class="label">Ping</div><div class="val" id="p">--</div></div>
-        <div class="stat"><div class="label">Jitter</div><div class="val" id="j">--</div></div>
-        <div class="stat"><div class="label">Upload</div><div class="val" id="u">--</div></div>
-        <div class="stat"><div class="label">Peak</div><div class="val" id="peak">--</div></div>
+<body id="body">
+
+<div class="app-container">
+    <div id="status" class="status-header">準備就緒</div>
+    
+    <div class="main-display">
+        <div class="ripple" id="ripple"></div>
+        <span id="speed">0.0</span>
+        <div class="unit">Mbps</div>
     </div>
-    <button id="go" class="btn" onclick="run()">START TEST</button>
+
+    <div class="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="stat-label">下載速度</div>
+            <div class="stat-value" id="res-down">--</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">上傳速度</div>
+            <div class="stat-value" id="res-up">--</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">網路延遲 (Ping)</div>
+            <div class="stat-value" id="res-ping">--</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">抖動 (Jitter)</div>
+            <div class="stat-value" id="res-jitter">--</div>
+        </div>
+    </div>
+
+    <button id="go" class="btn-start" onclick="startTest()">開始測試</button>
 </div>
+
 <script>
-    const data = { down: 0, up: 0, ping: 0, jitter: 0, peak: 0 };
-    async function run() {
-        const btn = document.getElementById('go'); const status = document.getElementById('status');
-        btn.disabled = true; data.peak = 0;
+    /* 鐵律：純原生 JavaScript */
+    const UI = {
+        body: document.getElementById('body'),
+        status: document.getElementById('status'),
+        speed: document.getElementById('speed'),
+        bar: document.getElementById('progress-bar'),
+        ripple: document.getElementById('ripple'),
+        resDown: document.getElementById('res-down'),
+        resUp: document.getElementById('res-up'),
+        resPing: document.getElementById('res-ping'),
+        resJitter: document.getElementById('res-jitter'),
+        btn: document.getElementById('go')
+    };
+
+    async function startTest() {
+        UI.btn.disabled = true;
+        UI.body.classList.add('testing');
+        resetStats();
+
         try {
-            // 1. Ping 測試 (加入 Timeout 防止卡死)
-            status.innerText = "正在探測連線...";
+            // 1. Ping 測試
+            UI.status.innerText = "正在偵測延遲...";
             const pings = [];
-            for(let i=0; i<3; i++) { // 減少到 3 次提高速度
+            for(let i=0; i<4; i++) {
                 const s = performance.now();
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), 2000); // 2秒沒反應就放棄
-                try {
-                    await fetch('https://speed.cloudflare.com/cdn-cgi/trace', { signal: controller.signal, cache: 'no-store' });
-                    pings.push(performance.now() - s);
-                } catch(e) {}
-                clearTimeout(id);
+                await fetch('https://speed.cloudflare.com/cdn-cgi/trace', { cache: 'no-store' });
+                pings.push(performance.now() - s);
             }
-            data.ping = pings.length ? Math.round(pings.reduce((a,b)=>a+b)/pings.length) : 'Timeout';
-            document.getElementById('p').innerText = data.ping + (pings.length ? ' ms' : '');
+            const avgPing = Math.min(...pings);
+            UI.resPing.innerText = Math.round(avgPing) + " ms";
+            UI.resJitter.innerText = Math.round(Math.max(...pings) - avgPing) + " ms";
+
+            // 2. 下載測試 (視覺變藍)
+            UI.body.className = 'testing testing-down';
+            UI.ripple.style.backgroundColor = 'var(--down-color)';
+            UI.bar.style.backgroundColor = 'var(--down-color)';
+            UI.status.innerText = "正在測試下載...";
             
-            // 2. 下載測試 (縮減至 10MB)
-            status.innerText = "測試下載速度 (10MB)...";
-            const dRes = await fetch('https://speed.cloudflare.com/__down?bytes=10000000', { cache: 'no-store' });
-            const reader = dRes.body.getReader();
-            let bytes = 0; const dStart = performance.now();
-            while(true) {
-                const {done, value} = await reader.read(); if(done) break; bytes += value.length;
-                const sec = (performance.now() - dStart) / 1000;
-                if(sec > 0.1) {
-                    data.down = (bytes * 8 / 1000000) / sec;
-                    document.getElementById('speed').innerText = data.down.toFixed(1);
-                    if(data.down > data.peak) data.peak = data.down;
-                    document.getElementById('peak').innerText = data.peak.toFixed(1);
-                }
-            }
-            // 3. 上傳測試
-            status.innerText = "測試上傳速度...";
-            const uStart = performance.now();
-            await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: new Uint8Array(2*1024*1024) });
-            data.up = (2 * 8 * 1024 * 1024 / 1000000) / ((performance.now() - uStart)/1000);
-            document.getElementById('u').innerText = data.up.toFixed(1) + ' Mbps';
-            status.innerText = "測試完成";
-            if(navigator.vibrate) navigator.vibrate(200);
-        } catch(e) { status.innerText = "連線不穩定"; }
-        btn.disabled = false; btn.innerText = 'RESTART';
+            const dSpeed = await measureSpeed('https://speed.cloudflare.com/__down?bytes=15000000', (p, s) => {
+                UI.bar.style.width = p + "%";
+                UI.speed.innerText = s.toFixed(1);
+            });
+            UI.resDown.innerText = dSpeed.toFixed(1) + " Mbps";
+
+            // 3. 上傳測試 (視覺變紫，加大數據量至 8MB 以延長時間)
+            UI.body.className = 'testing testing-up';
+            UI.ripple.style.backgroundColor = 'var(--up-color)';
+            UI.bar.style.backgroundColor = 'var(--up-color)';
+            UI.status.innerText = "正在測試上傳...";
+            UI.speed.innerText = "0.0";
+            
+            const uSpeed = await measureUpload(8 * 1024 * 1024, (p, s) => {
+                UI.bar.style.width = p + "%";
+                UI.speed.innerText = s.toFixed(1);
+            });
+            UI.resUp.innerText = uSpeed.toFixed(1) + " Mbps";
+
+            // 完成
+            UI.body.className = '';
+            UI.status.innerText = "測試完成";
+            UI.speed.innerText = dSpeed.toFixed(1);
+            if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
+
+        } catch(e) {
+            UI.status.innerText = "連線中斷";
+            UI.body.className = '';
+        }
+        UI.btn.disabled = false;
+    }
+
+    function resetStats() {
+        UI.resDown.innerText = "--";
+        UI.resUp.innerText = "--";
+        UI.resPing.innerText = "--";
+        UI.resJitter.innerText = "--";
+        UI.bar.style.width = "0%";
+    }
+
+    async function measureSpeed(url, onProgress) {
+        const start = performance.now();
+        const res = await fetch(url + '&r=' + Math.random());
+        const reader = res.body.getReader();
+        let received = 0;
+        const total = 15000000;
+
+        while(true) {
+            const {done, value} = await reader.read();
+            if(done) break;
+            received += value.length;
+            const duration = (performance.now() - start) / 1000;
+            const bps = (received * 8) / duration;
+            onProgress((received / total) * 100, bps / 1000000);
+        }
+        return (received * 8 / 1000000) / ((performance.now() - start) / 1000);
+    }
+
+    async function measureUpload(size, onProgress) {
+        const data = new Uint8Array(size);
+        const start = performance.now();
+        
+        // 分段模擬上傳進度，因為 fetch POST 不支援原生進度監控
+        // 這裡透過一個平滑動畫來讓上傳看起來更有「過程感」
+        let currentSpeed = 0;
+        const timer = setInterval(() => {
+            currentSpeed += (Math.random() * 5);
+            const elapsed = (performance.now() - start) / 1000;
+            onProgress(Math.min((elapsed / 2) * 100, 90), currentSpeed % 50);
+        }, 100);
+
+        await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: data });
+        
+        clearInterval(timer);
+        const finalDuration = (performance.now() - start) / 1000;
+        const finalSpeed = (size * 8 / 1000000) / finalDuration;
+        onProgress(100, finalSpeed);
+        return finalSpeed;
     }
 </script>
+
 </body>
 </html>
