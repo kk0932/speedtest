@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Speed Pro Max</title>
+    <style>
+        :root { --bg: #060910; --card: #111827; --primary: #0ea5e9; --text: #f8fafc; --dim: #64748b; }
+        body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        .box { width: 100%; max-width: 400px; text-align: center; background: var(--card); padding: 30px; border-radius: 24px; border: 1px solid #1f2937; }
+        .num { font-size: 4rem; font-weight: 900; display: block; margin: 20px 0; color: var(--primary); }
+        .btn { width: 100%; padding: 15px; border-radius: 50px; border: none; font-size: 1.2rem; font-weight: bold; cursor: pointer; background: var(--primary); color: white; transition: 0.3s; }
+        .btn:disabled { opacity: 0.5; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        .stat { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <div style="color:var(--dim); font-size: 0.8rem; letter-spacing: 2px;">NETWORK SPEED</div>
+    <span id="val" class="num">0.0</span>
+    <div style="color:var(--dim); margin-bottom: 30px;">Mbps Download</div>
+    <div class="grid">
+        <div class="stat">PING<br><span id="p">-</span> ms</div>
+        <div class="stat">JITTER<br><span id="j">-</span> ms</div>
+    </div>
+    <button id="go" class="btn" onclick="run()" style="margin-top:30px">START TEST</button>
+</div>
+<script>
+    async function run() {
+        const btn = document.getElementById('go'); btn.disabled = true; btn.innerText = 'TESTING...';
+        try {
+            const s = performance.now();
+            await fetch('https://speed.cloudflare.com/cdn-cgi/trace', { cache: 'no-store' });
+            const ping = Math.round(performance.now() - s);
+            document.getElementById('p').innerText = ping;
+
+            const res = await fetch('https://speed.cloudflare.com/__down?bytes=15000000', { cache: 'no-store' });
+            const reader = res.body.getReader(); let loaded = 0; const start = performance.now();
+            while(true) {
+                const {done, value} = await reader.read();
+                if(done) break; loaded += value.length;
+                const speed = (loaded * 8 / 1000000) / ((performance.now() - start) / 1000);
+                document.getElementById('val').innerText = speed.toFixed(1);
+            }
+            if(navigator.vibrate) navigator.vibrate(200);
+        } catch(e) { alert('Test Failed'); }
+        btn.disabled = false; btn.innerText = 'RESTART';
+    }
+</script>
+</body>
+</html>
