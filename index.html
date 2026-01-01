@@ -3,49 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Speed Pro Max</title>
+    <title>Speed Pro Max | 專業網速監控</title>
     <style>
-        :root { --bg: #060910; --card: #111827; --primary: #0ea5e9; --text: #f8fafc; --dim: #64748b; }
+        :root { --bg: #060910; --card: #111827; --primary: #0ea5e9; --accent: #6366f1; --text: #f8fafc; --dim: #64748b; }
         body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; box-sizing: border-box; }
-        .box { width: 100%; max-width: 400px; text-align: center; background: var(--card); padding: 30px; border-radius: 24px; border: 1px solid #1f2937; }
-        .num { font-size: 4rem; font-weight: 900; display: block; margin: 20px 0; color: var(--primary); }
-        .btn { width: 100%; padding: 15px; border-radius: 50px; border: none; font-size: 1.2rem; font-weight: bold; cursor: pointer; background: var(--primary); color: white; transition: 0.3s; }
-        .btn:disabled { opacity: 0.5; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        .stat { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 12px; font-size: 0.9rem; }
+        .box { width: 100%; max-width: 400px; text-align: center; background: var(--card); padding: 30px; border-radius: 28px; border: 1px solid #1f2937; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+        .num { font-size: 5rem; font-weight: 900; display: block; margin: 10px 0; color: var(--primary); letter-spacing: -2px; }
+        .btn { width: 100%; padding: 16px; border-radius: 50px; border: none; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 20px; }
+        .btn-go { background: var(--primary); color: white; box-shadow: 0 10px 20px rgba(14, 165, 233, 0.3); }
+        .btn-share { background: rgba(255,255,255,0.05); border: 1px solid var(--dim); color: var(--text); display: none; margin-top: 10px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 25px; }
+        .stat { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05); }
+        .label { font-size: 0.7rem; color: var(--dim); text-transform: uppercase; margin-bottom: 5px; }
+        .val { font-size: 1.1rem; font-weight: bold; }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); align-items: center; justify-content: center; flex-direction: column; }
+        .modal img { max-width: 90%; border-radius: 12px; }
     </style>
 </head>
 <body>
 <div class="box">
-    <div style="color:var(--dim); font-size: 0.8rem; letter-spacing: 2px;">NETWORK SPEED</div>
-    <span id="val" class="num">0.0</span>
-    <div style="color:var(--dim); margin-bottom: 30px;">Mbps Download</div>
+    <div style="color:var(--dim); font-size: 0.75rem; font-weight: bold; letter-spacing: 3px;">LIVE NETWORK TEST</div>
+    <span id="speed" class="num">0.0</span>
+    <div id="status" style="color:var(--dim); margin-bottom: 20px;">Mbps Download</div>
     <div class="grid">
-        <div class="stat">PING<br><span id="p">-</span> ms</div>
-        <div class="stat">JITTER<br><span id="j">-</span> ms</div>
+        <div class="stat"><div class="label">Ping</div><div class="val" id="p">--</div></div>
+        <div class="stat"><div class="label">Jitter</div><div class="val" id="j">--</div></div>
+        <div class="stat"><div class="label">Upload</div><div class="val" id="u">--</div></div>
+        <div class="stat"><div class="label">Peak</div><div class="val" id="peak">--</div></div>
     </div>
-    <button id="go" class="btn" onclick="run()" style="margin-top:30px">START TEST</button>
+    <button id="go" class="btn btn-go" onclick="run()">START TEST</button>
+    <button id="share" class="btn btn-share" onclick="draw()">GENERATE REPORT</button>
 </div>
+<canvas id="cvs" width="1200" height="630" style="display:none"></canvas>
+<div id="modal" class="modal" onclick="this.style.display='none'"><img id="resImg"><p style="color:var(--dim); margin-top:15px">長按圖片儲存分享</p></div>
 <script>
+    const data = { down: 0, up: 0, ping: 0, jitter: 0, peak: 0 };
     async function run() {
-        const btn = document.getElementById('go'); btn.disabled = true; btn.innerText = 'TESTING...';
+        const btn = document.getElementById('go'); const status = document.getElementById('status');
+        btn.disabled = true; document.getElementById('share').style.display = 'none';
         try {
-            const s = performance.now();
-            await fetch('https://speed.cloudflare.com/cdn-cgi/trace', { cache: 'no-store' });
-            const ping = Math.round(performance.now() - s);
-            document.getElementById('p').innerText = ping;
-
-            const res = await fetch('https://speed.cloudflare.com/__down?bytes=15000000', { cache: 'no-store' });
-            const reader = res.body.getReader(); let loaded = 0; const start = performance.now();
-            while(true) {
-                const {done, value} = await reader.read();
-                if(done) break; loaded += value.length;
-                const speed = (loaded * 8 / 1000000) / ((performance.now() - start) / 1000);
-                document.getElementById('val').innerText = speed.toFixed(1);
+            status.innerText = "測量延遲中...";
+            const pings = [];
+            for(let i=0; i<5; i++) {
+                const s = performance.now();
+                await fetch('https://speed.cloudflare.com/cdn-cgi/trace', { cache: 'no-store' });
+                pings.push(performance.now() - s);
+                await new Promise(r => setTimeout(r, 100));
             }
-            if(navigator.vibrate) navigator.vibrate(200);
-        } catch(e) { alert('Test Failed'); }
+            data.ping = Math.round(pings.reduce((a,b)=>a+b)/5);
+            let jit = 0; for(let i=1; i<5; i++) jit += Math.abs(pings[i] - pings[i-1]);
+            data.jitter = Math.round(jit/4);
+            document.getElementById('p').innerText = data.ping + ' ms';
+            document.getElementById('j').innerText = data.jitter + ' ms';
+
+            status.innerText = "測試下載速度...";
+            const dRes = await fetch('https://speed.cloudflare.com/__down?bytes=15000000', { cache: 'no-store' });
+            const reader = dRes.body.getReader();
+            let bytes = 0; const dStart = performance.now();
+            while(true) {
+                const {done, value} = await reader.read(); if(done) break; bytes += value.length;
+                const sec = (performance.now() - dStart) / 1000;
+                data.down = (bytes * 8 / 1000000) / sec;
+                document.getElementById('speed').innerText = data.down.toFixed(1);
+                if(data.down > data.peak) data.peak = data.down;
+                document.getElementById('peak').innerText = data.peak.toFixed(1);
+            }
+
+            status.innerText = "測試上傳速度...";
+            const uStart = performance.now();
+            await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: new Uint8Array(5*1024*1024) });
+            data.up = (5 * 8 * 1024 * 1024 / 1000000) / ((performance.now() - uStart)/1000);
+            document.getElementById('u').innerText = data.up.toFixed(1) + ' Mb';
+
+            status.innerText = "測試完成";
+            if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            document.getElementById('share').style.display = 'block';
+        } catch(e) { status.innerText = "測試中斷"; }
         btn.disabled = false; btn.innerText = 'RESTART';
+    }
+    function draw() {
+        const c = document.getElementById('cvs'), ctx = c.getContext('2d');
+        ctx.fillStyle = '#060910'; ctx.fillRect(0,0,1200,630);
+        ctx.fillStyle = '#0ea5e9'; ctx.font = 'bold 120px sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(data.down.toFixed(1), 600, 320);
+        ctx.fillStyle = '#64748b'; ctx.font = '30px sans-serif'; ctx.fillText('Mbps DOWNLOAD', 600, 180);
+        ctx.font = '24px sans-serif';
+        ctx.fillText(`PING: ${data.ping}ms | JITTER: ${data.jitter}ms | UPLOAD: ${data.up.toFixed(1)}Mbps`, 600, 420);
+        ctx.fillText(new Date().toLocaleString(), 600, 550);
+        document.getElementById('resImg').src = c.toDataURL();
+        document.getElementById('modal').style.display = 'flex';
     }
 </script>
 </body>
